@@ -1,0 +1,175 @@
+/**
+ * FestivaPulseAI — FestivaPulseAI module.
+ */
+
+export type SupportedLanguage = 'en' | 'ta' | 'hi' | 'te' | 'kn' | 'ml' | 'es';
+
+export interface TranslationDictionary {
+  nav: {
+    brandTitle: string;
+    brandSubtitle: string;
+    blueprintTab: string;
+    pulseTab: string;
+    rescueTab: string;
+    ledgerTab: string;
+    scenarioTab: string;
+    xrayButton: string;
+    qaTestButton: string;
+    themeToggle: string;
+  };
+  metrics: {
+    guestAttendance: string;
+    budgetStatus: string;
+    foodSufficiency: string;
+    soundCurfew: string;
+    carbonAbatement: string;
+    venueCapacity: string;
+    spent: string;
+    contingency: string;
+  };
+  blueprint: {
+    title: string;
+    subtitle: string;
+    intakeHeader: string;
+    generateButton: string;
+    generating: string;
+    eventName: string;
+    guests: string;
+    budget: string;
+    location: string;
+    date: string;
+    culturalVibe: string;
+    timelineSchedule: string;
+    budgetBreakdown: string;
+    foodRadarTitle: string;
+    quickPresets: string;
+    presetWedding: string;
+    presetCommunity: string;
+    presetIntimate: string;
+    wellbeingTitle: string;
+    eldersComfort: string;
+    healthyFood: string;
+    kidsZone: string;
+    executiveSummary: string;
+  };
+  pulse: {
+    title: string;
+    subtitle: string;
+    gateCheckIn: string;
+    buffetLine: string;
+    acousticMonitor: string;
+    fssaiDispatch: string;
+    fssaiButton: string;
+    dispatchSuccess: string;
+    attendanceRate: string;
+    financialAllocation: string;
+    policeLimit: string;
+    simulateGate: string;
+    shockHeader: string;
+    shockSub: string;
+    crowdSurge: string;
+    foodShortage: string;
+    budgetSlash: string;
+    timelineDelay: string;
+  };
+  rescue: {
+    title: string;
+    subtitle: string;
+    readyTitle: string;
+    readySub: string;
+    incidentDetected: string;
+    comparativeMatrix: string;
+    lowestCost: string;
+    bestExperience: string;
+    lowestDisruption: string;
+    approveButton: string;
+    approvedSuccess: string;
+    rejectionRationale: string;
+    zeroHallucinationProof: string;
+    systemRefusal: string;
+    refusalSub: string;
+    costImpact: string;
+    timelineImpact: string;
+    guestsCovered: string;
+    feasibility: string;
+    humanApprovalNeeded: string;
+  };
+  ledger: {
+    title: string;
+    subtitle: string;
+    emptyTitle: string;
+    emptySub: string;
+    filterAll: string;
+    immutableProof: string;
+    signedByCoordinator: string;
+    planVersion: string;
+    calculationsAudited: string;
+    reasonForChange: string;
+    proofTitle: string;
+    geminiSynthesis: string;
+    certifiedEntries: string;
+  };
+  radar: {
+    title: string;
+    subtitle: string;
+    emptySub: string;
+    shortfall: string;
+    zeroShortfall: string;
+    surplusPortions: string;
+    categoryCol: string;
+    requiredCol: string;
+    preparedCol: string;
+    servedCol: string;
+    availableCol: string;
+    burnRateCol: string;
+    depletionCol: string;
+    netBalanceCol: string;
+    fssaiTitle: string;
+    fssaiSub: string;
+    fssaiGenerateBtn: string;
+    fssaiCloseBtn: string;
+    fssaiIssueBtn: string;
+  };
+  scenario: {
+    title: string;
+    subtitle: string;
+    emptySub: string;
+    resetBtn: string;
+    attendanceShock: string;
+    budgetVariance: string;
+    delayShock: string;
+    weatherFlip: string;
+    weatherSub: string;
+    assessmentTitle: string;
+    cateringReq: string;
+    venueSafety: string;
+    curfewProj: string;
+  };
+  schematic: {
+    title: string;
+    liveDensity: string;
+    occupancy: string;
+    stage: string;
+    audience: string;
+    elders: string;
+    kids: string;
+    dining: string;
+    disclaimer: string;
+  };
+  qa: {
+    title: string;
+    subtitle: string;
+    prompt: string;
+    runBtn: string;
+    running: string;
+    closeBtn: string;
+  };
+  common: {
+    statusSafe: string;
+    statusWarning: string;
+    statusCritical: string;
+    feasible: string;
+    infeasible: string;
+    loading: string;
+  };
+}

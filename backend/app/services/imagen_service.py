@@ -1,0 +1,634 @@
+"""Imagen 3.0 & Gemini Flash Image Visualizer Service for FestivaPulseAI.
+
+Generates opulent, constraint-aware celebration visualizations using Vertex AI / Google GenAI
+Imagen 3.0 (imagen-3.0-generate-002) and Gemini Multimodal Image Generation (gemini-2.5-flash-image)
+with dynamic LLM-orchestrated photographic prompt engineering and high-fidelity Guided Tour atelier fallback.
+Adheres to @05_vertex_model_registry, @09_frontend_gui_architect, and production-invariants.
+"""
+
+import base64
+import os
+import time
+from typing import Any
+
+from backend.app.config import settings
+
+# Comprehensive Guided Tour Themes mirroring 4DX Sensory Digital Twin (ordered by specificity)
+GUIDED_TOUR_THEMES = [
+    {
+        "id": "eco_harvest",
+        "theme_category": "Eco-Sustainable Botanical",
+        "theme_name": "Eco-Friendly Community Harvest Festival",
+        "tagline": "Zero-Waste Bamboo Pavilions, Banana Leaf Dining, Earthen Matkas & Live Folk Flute",
+        "asset_url": "/assets/theme_eco_harvest.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_eco_harvest.jpg",
+        "cultural_elements": [
+            "100% Biodegradable Areca Nut Tableware",
+            "Solar-Powered Amber Fairy Light Canopies",
+            "Organic Farm-to-Table Traditional Feast",
+            "FSSAI 0% Food Waste Route to Local Shelters",
+        ],
+        "keywords": [
+            "eco",
+            "green",
+            "harvest",
+            "bamboo",
+            "nature",
+            "organic",
+            "millet",
+            "village",
+            "zero waste",
+            "biodegradable",
+        ],
+    },
+    {
+        "id": "genz_neon",
+        "theme_category": "Trendsetter & Party",
+        "theme_name": "Gen Z Neon Techno After-Party & Sangeet",
+        "tagline": "Cyberpunk Laser Light Shows, LED Cocktail Bar, 128 BPM Sound System & Silent Disco",
+        "asset_url": "/assets/theme_genz_neon.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_genz_neon.jpg",
+        "cultural_elements": [
+            "Laser Beam Grid with Haze Fog Mapping",
+            "Molecular Cocktail Mixology with Liquid Nitrogen",
+            "Silent Disco Headphones Past 22:00 Curfew",
+            "Interactive RFID Photo Wall & TikTok Drone Cam",
+        ],
+        "keywords": [
+            "gen z",
+            "genz",
+            "neon",
+            "techno",
+            "cyberpunk",
+            "laser",
+            "dj",
+            "cocktail",
+            "party",
+            "disco",
+            "afterparty",
+            "after-party",
+            "sangeet",
+            "club",
+            "edm",
+            "rave",
+        ],
+    },
+    {
+        "id": "church_cathedral",
+        "theme_category": "Christian Nuptials",
+        "theme_name": "Grand Church Cathedral Nuptial Mass",
+        "tagline": "Majestic Stained Glass Gothic Sanctuary, White Floral Aisle & Angelic Choral Harmony",
+        "asset_url": "/assets/theme_church_cathedral.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_church_cathedral.jpg",
+        "cultural_elements": [
+            "80-Foot White Satin Velvet Aisle Runner",
+            "Tiered Ivory Fondant Cake & Champagne Toast",
+            "Classical String Quartet & Church Choir",
+            "European Roasted Gourmet Banquet & Pastry Station",
+        ],
+        "keywords": [
+            "church",
+            "cathedral",
+            "christian",
+            "nuptial",
+            "stained glass",
+            "choir",
+            "organ",
+            "white wedding",
+            "aisle",
+            "veil",
+            "gown",
+            "pastor",
+            "mass",
+        ],
+    },
+    {
+        "id": "muslim_nikah",
+        "theme_category": "Mughal Royal Grandeur",
+        "theme_name": "Royal Muslim Maharaja Nikah & Walima",
+        "tagline": "Emerald & Ivory Jaali Pavilion, Scented Oudh Misting & Devotional Sufi Qawwali",
+        "asset_url": "/assets/theme_muslim_nikah.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_muslim_nikah.jpg",
+        "cultural_elements": [
+            "Hand-Carved Marble Mehraab Stage Backdrop",
+            "Segregated Zenana & Mardana Plush Lounges",
+            "Authentic Slow-Cooked Dum Biryani Handis",
+            "Silver Ittar (Attar) Fragrance Fountains",
+        ],
+        "keywords": [
+            "muslim",
+            "nikah",
+            "walima",
+            "mughal",
+            "jaali",
+            "sufi",
+            "qawwali",
+            "dawat",
+            "biryani",
+            "ittar",
+            "attar",
+            "emerald",
+            "mehraab",
+            "hyderabad",
+            "nizami",
+            "urdu",
+        ],
+    },
+    {
+        "id": "tamil_brahmin",
+        "theme_category": "Vedic Temple Muhurtham",
+        "theme_name": "Tamil Brahmin Grand Temple Kalyanam",
+        "tagline": "Sacred Gopuram Sanctum, Brass Kuthuvilakku Lamps, Vedic Chants & Fresh Lotus Arches",
+        "asset_url": "/assets/theme_tamil_brahmin.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_tamil_brahmin.jpg",
+        "cultural_elements": [
+            "Kasi Yatra & Oonjal Swing Ceremony with Silk Cushions",
+            "18-Dish Authentic Banana Leaf Sadya (No Onion/Garlic)",
+            "Live Master Nadaswaram & Thavil Artists",
+            "Fresh Jasmine (Malli) Floral Pillars",
+        ],
+        "keywords": [
+            "tamil",
+            "brahmin",
+            "temple",
+            "kalyana",
+            "kalyanam",
+            "carnatic",
+            "nadaswaram",
+            "thavil",
+            "sadya",
+            "chennai",
+            "mylapore",
+            "coimbatore",
+            "madurai",
+            "lotus",
+            "jasmine",
+            "malli",
+            "kuthuvilakku",
+            "south",
+        ],
+    },
+    {
+        "id": "ambani_luxury",
+        "theme_category": "Ultra-Luxury Royal Gala",
+        "theme_name": "Ultra-Modern Billionaire Extravaganza",
+        "tagline": "Tiered Crystal Chandeliers, Drone Light Show, Floating Floral Fountains & Global Couture",
+        "asset_url": "/assets/theme_ambani_luxury.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_ambani_luxury.jpg",
+        "cultural_elements": [
+            "Swarovski Crystal Cascades with Automated Dimmers",
+            "Michelin-Star Celebrity Chef Live Pavilions",
+            "Synchronized 400-Drone Aerial Storytelling Display",
+            "Bespoke Gold-Plated Invitation & Concierge Fleet",
+        ],
+        "keywords": [
+            "ambani",
+            "billionaire",
+            "luxury",
+            "crystal",
+            "glasshouse",
+            "opulence",
+            "chandelier",
+            "couture",
+            "swarovski",
+            "drone",
+            "michelin",
+        ],
+    },
+    {
+        "id": "economy_courtyard",
+        "theme_category": "Budget-Optimized Dignity",
+        "theme_name": "Smart Economy / Intimate Courtyard Wedding",
+        "tagline": "Warm Brass Diyas, Rustic Stone Archways, Intimate 80-Guest Banquet & Acoustic Melody",
+        "asset_url": "/assets/theme_economy_courtyard.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_economy_courtyard.jpg",
+        "cultural_elements": [
+            "Warm Brass Diya Illuminations on Stone Steps",
+            "Family-Recipe Heritage Feast Service",
+            "Intimate 80-Seat Open Sky Courtyard Table",
+            "Maximum Financial Prudence with Zero Elegance Loss",
+        ],
+        "keywords": [
+            "economy",
+            "courtyard",
+            "intimate",
+            "budget",
+            "rustic",
+            "stone",
+            "simple",
+            "modest",
+            "family",
+            "micro",
+        ],
+    },
+    {
+        "id": "raja_rani",
+        "theme_category": "Royal Rajput Heritage",
+        "theme_name": "Raja Rani Rajasthan Palace Wedding",
+        "tagline": "Opulent Rajput Fort Grandeur with Marigold Arches, Golden Torches & Royal Fanfare",
+        "asset_url": "/assets/theme_raja_rani.jpg",
+        "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/theme_raja_rani.jpg",
+        "cultural_elements": [
+            "Carved Teak Mandap with 24k Gold Accents",
+            "Ceremonial Agni Kund with Sandalwood Logs",
+            "Live Shehnai & Nagada Auspicious Procession",
+            "Grand Royal Thali Feast on Brassware",
+        ],
+        "keywords": [
+            "raja",
+            "rani",
+            "palace",
+            "fort",
+            "rajput",
+            "udaipur",
+            "jaipur",
+            "rajasthan",
+            "heritage",
+            "marigold",
+            "shehnai",
+            "royal",
+            "king",
+            "queen",
+            "maharaja",
+        ],
+    },
+]
+
+DEFAULT_THEME = {
+    "id": "hall_transform_3d",
+    "theme_category": "3D Transformed Mandap Atelier",
+    "theme_name": "Classical Royal Celebration Mandap",
+    "tagline": "Opulent Indian Celebration Mandap with Floral Torans, Teak Pillars & Brass Diyas",
+    "asset_url": "/assets/hall_transform_3d.jpg",
+    "gcs_url": "https://storage.googleapis.com/festivapulse-cloud-assets/themes/hall_transform_3d.jpg",
+    "cultural_elements": [
+        "Carved Wooden Mandap Stage with Floral Accents",
+        "Fresh Jasmine & Marigold Auspicious Hangings",
+        "Ceremonial Brass Oil Lamps & Sacred Kalash",
+        "Panoramic Guest Banquet Seating",
+    ],
+}
+
+SYSTEM_PROMPT_DIRECTOR = (
+    "You are FestivaPulseAI's Senior Visual Director & Architectural Cinematographer for luxury celebrations. "
+    "Transform the user's celebration concept into an ultra-photorealistic, cinematographic scene prompt "
+    "engineered specifically for Google Imagen 3 and Gemini image generation models.\n\n"
+    "Follow these strict directives:\n"
+    "1. Perspective & Framing: Wide-angle eye-level architectural shot capturing the grand mandap/stage, banquet hall, or outdoor pavilion in full perspective.\n"
+    "2. Atmospheric Lighting: Deeply describe lighting physics matching the chosen mood (e.g., golden hour amber sunbeams, twilight violet dusk, candlelit brass lanterns, or crisp morning dawn).\n"
+    "3. Tactile Materials & Florals: Intricate Banarasi raw silk drapes, zardozi gold embroidery, cascading fresh Sambac jasmine (mogra) and orange marigold torans, polished Italian marble with mirror reflections.\n"
+    "4. Optics & Camera: Shot on Hasselblad H6D-100c medium format camera with a 35mm f/1.8 lens, natural optical depth-of-field, sharp focus, 8K UHD resolution, Architectural Digest and National Geographic luxury editorial style.\n"
+    "5. Format: Output ONLY a single dense, evocative descriptive paragraph (100-180 words). No conversational filler, no markdown bolding, no quotation marks."
+)
+
+
+class ImagenVisualizerService:
+    """Photorealistic generative venue and decor visualizer leveraging Google Imagen 3."""
+
+    def __init__(self) -> None:
+        """Initializes Imagen visualizer service with target image model and client."""
+        self.model_name = settings.IMAGEN_MODEL
+        self._client = None
+        self._init_client()
+
+    def _init_client(self) -> None:
+        """Connects to Google GenAI or Vertex AI client for live Imagen 3 visual synthesis."""
+        if settings.is_live_gemini_enabled:
+            try:
+                from google import genai
+
+                if settings.effective_gemini_key and settings.effective_gemini_key not in (
+                    "demo_mode_key",
+                    "your_gemini_api_key_here",
+                ):
+                    self._client = genai.Client(api_key=settings.effective_gemini_key)
+                    return
+
+                project_id = (
+                    os.environ.get("GOOGLE_CLOUD_PROJECT")
+                    or os.environ.get("GCP_PROJECT")
+                    or settings.GCP_PROJECT_ID
+                    or "genai-apac-2026-491004"
+                )
+                region = os.environ.get("GCP_REGION") or "us-central1"
+                self._client = genai.Client(vertexai=True, project=project_id, location=region)
+                print(f"[INFO] Initialized Vertex AI GenAI Client (project={project_id}, location={region})")
+            except Exception as e:
+                print(f"[WARN] Failed to initialize Google GenAI Imagen client: {e}. Running in graceful demo mode.")
+                self._client = None
+
+    def synthesize_dynamic_photographic_prompt(
+        self,
+        prompt: str,
+        lighting_mood: str = "Golden Hour Glow",
+        style: str = "photorealistic",
+    ) -> str:
+        """Synthesizes an ultra-rich, cinematographic scene prompt using Gemini LLM with local fallback."""
+        clean_prompt = prompt.strip()
+        if self._client:
+            try:
+                response = self._client.models.generate_content(
+                    model=settings.GEMINI_MODEL,
+                    contents=f"Celebration concept: {clean_prompt}. Lighting mood: {lighting_mood}. Visual style: {style}.",
+                    config={
+                        "system_instruction": SYSTEM_PROMPT_DIRECTOR,
+                        "temperature": 0.6,
+                    },
+                )
+                if response and response.text and response.text.strip():
+                    return response.text.strip()
+            except Exception as e:
+                print(
+                    f"[WARN] Gemini LLM prompt expansion error: {e}. Falling back to deterministic prompt synthesizer."
+                )
+
+        return self._synthesize_local_photographic_prompt(clean_prompt, lighting_mood, style)
+
+    def _synthesize_local_photographic_prompt(
+        self,
+        prompt: str,
+        lighting_mood: str,
+        style: str = "photorealistic",
+    ) -> str:
+        """Deterministically constructs a multi-layered photographic master prompt for Imagen."""
+        mood_lighting_descriptions = {
+            "Golden Hour Glow": (
+                "bathed in warm late-afternoon volumetric golden light, long amber sunbeams filtering "
+                "through diaphanous silk canopies, casting glowing highlights over ornate floral arches and brass artifacts"
+            ),
+            "Muhurtham Twilight": (
+                "illuminated in sacred twilight violet and deep indigo gradients, contrasted with "
+                "hundreds of glowing brass kuthuvilakku oil lamps and soft lavender architectural uplighting"
+            ),
+            "Royal Candlelight Night": (
+                "dramatically lit by hundreds of flickering beeswax candles and brass oil lamps in floating bronze urlis, "
+                "with warm tungsten reflections glistening across polished stone and velvet drapery"
+            ),
+            "Sunlit Morning": (
+                "drenched in crisp morning dawn sunlight with crystalline atmospheric clarity, "
+                "morning dewdrops glistening on fresh floral petals with soft natural shadows"
+            ),
+        }
+        atmosphere = mood_lighting_descriptions.get(
+            lighting_mood,
+            f"illuminated in atmospheric {lighting_mood} with warm ambient glow and balanced shadows",
+        )
+
+        return (
+            f"An ultra-photorealistic, wide-angle eye-level architectural photograph capturing {prompt}. "
+            f"The celebration space is {atmosphere}. Intricate floral garlands of fresh marigolds, fragrant Sambac jasmine, "
+            f"and lotus blooms adorn hand-carved pillars and archways. Rich Banarasi raw silk and velvet drapery with subtle gold zardozi "
+            f"threading frame the grand ceremonial stage, with polished reflective marble floors mirroring the luminous surroundings. "
+            f"Captured on a Hasselblad H6D-100c medium format camera with a 35mm f/1.8 lens, sharp focus, natural optical depth of field, "
+            f"8K UHD resolution, in the opulent editorial aesthetic of Architectural Digest and National Geographic."
+        )
+
+    def generate_visualization(
+        self,
+        prompt: str,
+        style: str = "photorealistic",
+        lighting_mood: str = "Golden Hour Glow",
+        aspect_ratio: str = "16:9",
+    ) -> dict[str, Any]:
+        """Generates celebration visual using dynamic LLM prompt expansion and Vertex AI Imagen / Gemini Image models."""
+        start_time = time.time()
+        clean_prompt = prompt.strip()
+
+        # 1. Dynamic LLM Photographic Prompt Synthesis
+        print(
+            f"[INFO] ImagenVisualizer: Generating visual for prompt='{clean_prompt[:60]}', client_active={self._client is not None}"
+        )
+        enriched_prompt = self.synthesize_dynamic_photographic_prompt(clean_prompt, lighting_mood, style)
+
+        # 2. Attempt Live Image Generation via Gemini Flash Image or Imagen 3.0
+        if self._client:
+            # Strategy A: Native Multimodal Image Generation via gemini-2.5-flash-image
+            try:
+                print(f"[INFO] Calling Vertex AI model: {settings.IMAGE_MULTIMODAL_MODEL}...")
+                result = self._client.models.generate_content(
+                    model=settings.IMAGE_MULTIMODAL_MODEL,
+                    contents=enriched_prompt,
+                )
+                if result and result.candidates and len(result.candidates) > 0:
+                    candidate = result.candidates[0]
+                    if candidate.content and candidate.content.parts:
+                        for part in candidate.content.parts:
+                            if part.inline_data and part.inline_data.data:
+                                img_bytes = part.inline_data.data
+                                mime_type = part.inline_data.mime_type or "image/png"
+                                b64_data = base64.b64encode(img_bytes).decode("utf-8")
+                                latency_ms = int((time.time() - start_time) * 1000)
+                                data_url = f"data:{mime_type};base64,{b64_data}"
+                                theme_info = self._extract_theme_info(clean_prompt)
+                                print(
+                                    f"[INFO] Vertex AI Flash Image generation succeeded in {latency_ms}ms ({len(img_bytes)} bytes)"
+                                )
+                                return {
+                                    "success": True,
+                                    "image_url": data_url,
+                                    "asset_url": data_url,
+                                    "model": f"{settings.IMAGE_MULTIMODAL_MODEL} (Vertex AI Live)",
+                                    "prompt": clean_prompt,
+                                    "enriched_prompt": enriched_prompt,
+                                    "lighting_mood": lighting_mood,
+                                    "latency_ms": latency_ms,
+                                    "is_live": True,
+                                    "theme_category": theme_info["theme_category"],
+                                    "theme_name": f"{clean_prompt[:45]}... Dynamic AI Render",
+                                    "tagline": "Dynamic AI Photographic Render via Gemini LLM + Imagen",
+                                    "cultural_elements": theme_info["cultural_elements"],
+                                }
+            except Exception as e:
+                print(f"[WARN] Gemini Flash Image live generation error: {e}. Trying Imagen 3.0 model.")
+
+            # Strategy B: Imagen 3.0 via generate_images
+            try:
+                print(f"[INFO] Calling Vertex AI model: {self.model_name}...")
+                result = self._client.models.generate_images(
+                    model=self.model_name,
+                    prompt=enriched_prompt,
+                    config={
+                        "number_of_images": 1,
+                        "aspect_ratio": aspect_ratio,
+                    },
+                )
+                if result.generated_images and len(result.generated_images) > 0:
+                    generated_img = result.generated_images[0]
+                    img_bytes = generated_img.image.image_bytes
+                    b64_data = base64.b64encode(img_bytes).decode("utf-8")
+                    latency_ms = int((time.time() - start_time) * 1000)
+                    data_url = f"data:image/jpeg;base64,{b64_data}"
+                    theme_info = self._extract_theme_info(clean_prompt)
+                    print(
+                        f"[INFO] Vertex AI Imagen 3.0 generation succeeded in {latency_ms}ms ({len(img_bytes)} bytes)"
+                    )
+                    return {
+                        "success": True,
+                        "image_url": data_url,
+                        "asset_url": data_url,
+                        "model": self.model_name,
+                        "prompt": clean_prompt,
+                        "enriched_prompt": enriched_prompt,
+                        "lighting_mood": lighting_mood,
+                        "latency_ms": latency_ms,
+                        "is_live": True,
+                        "theme_category": theme_info["theme_category"],
+                        "theme_name": f"{clean_prompt[:45]}... Imagen 3.0 Render",
+                        "tagline": "Dynamic AI Photographic Render via Gemini LLM + Imagen 3",
+                        "cultural_elements": theme_info["cultural_elements"],
+                    }
+            except Exception as e:
+                print(
+                    f"[WARN] Imagen 3 live generation error: {e}. Falling back to Guided Tour atelier photo synthesis."
+                )
+
+        # 3. High-Fidelity Guided Tour Photographic Atelier Synthesis (Graceful Offline / Demo Fallback)
+        latency_ms = int((time.time() - start_time) * 1000)
+        procedural = self._synthesize_procedural_visual(clean_prompt, lighting_mood)
+        return {
+            "success": True,
+            "image_url": procedural["asset_url"],
+            "asset_url": procedural["asset_url"],
+            "gcs_url": procedural["gcs_url"],
+            "svg_data_url": procedural["data_url"],
+            "model": f"{self.model_name} (Guided Tour Atelier Engine)",
+            "prompt": clean_prompt,
+            "enriched_prompt": enriched_prompt,
+            "lighting_mood": lighting_mood,
+            "latency_ms": max(latency_ms, 35),
+            "is_live": False,
+            "theme_category": procedural["theme_category"],
+            "theme_name": procedural["theme_name"],
+            "tagline": procedural["tagline"],
+            "cultural_elements": procedural["cultural_elements"],
+        }
+
+    def _extract_theme_info(self, prompt: str) -> dict[str, Any]:
+        """Extracts thematic metadata and cultural element tags aligned with prompt."""
+        prompt_low = prompt.lower()
+        for theme in GUIDED_TOUR_THEMES:
+            if any(k in prompt_low for k in theme["keywords"]):
+                return {
+                    "theme_category": theme["theme_category"],
+                    "cultural_elements": theme["cultural_elements"],
+                }
+        return {
+            "theme_category": "Custom AI Celebration",
+            "cultural_elements": [
+                "Custom Architectural Mandap",
+                "Neural Light Rendering",
+                "8K Hasselblad Lens",
+                "Volumetric Ambiance",
+            ],
+        }
+
+    def _synthesize_procedural_visual(self, prompt: str, lighting_mood: str) -> dict[str, Any]:
+        """Synthesizes high-fidelity celebration imagery matching Guided Tour photo collection."""
+        prompt_low = prompt.lower()
+
+        # Lighting color scales for vector accent
+        lighting_map = {
+            "Golden Hour Glow": ("#FFB800", "#FF8A00", "#4A1800", "#1C0A00"),
+            "Muhurtham Twilight": ("#E0AAFF", "#9D4EDD", "#3C096C", "#10002B"),
+            "Royal Candlelight Night": ("#FFD166", "#EF476F", "#2B0938", "#080114"),
+            "Sunlit Morning": ("#FFE6A7", "#D4A373", "#6F4E37", "#251605"),
+        }
+        accent, mid_color, bg_mid, bg_deep = lighting_map.get(
+            lighting_mood, ("#FFB800", "#FF8A00", "#4A1800", "#1C0A00")
+        )
+
+        # Match against Guided Tour themes
+        matched_theme = None
+        for theme in GUIDED_TOUR_THEMES:
+            if any(k in prompt_low for k in theme["keywords"]):
+                matched_theme = theme
+                break
+
+        if not matched_theme:
+            matched_theme = DEFAULT_THEME
+
+        theme_cat = matched_theme["theme_category"]
+        asset_url = matched_theme["asset_url"]
+        gcs_url = matched_theme["gcs_url"]
+        theme_name = matched_theme["theme_name"]
+        tagline = matched_theme["tagline"]
+        cultural_elements = matched_theme["cultural_elements"]
+
+        # Generate responsive vector SVG blueprint as supplemental vector layer
+        svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{bg_mid}"/>
+      <stop offset="100%" stop-color="{bg_deep}"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="{accent}" stop-opacity="0.5"/>
+      <stop offset="60%" stop-color="{mid_color}" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="{bg_deep}" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <!-- Sky and Atmosphere -->
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <circle cx="640" cy="300" r="380" fill="url(#glow)"/>
+
+  <!-- Royal Pillars -->
+  <g fill="{accent}" opacity="0.85">
+    <rect x="180" y="240" width="40" height="380" rx="8"/>
+    <rect x="280" y="260" width="35" height="360" rx="6" opacity="0.7"/>
+    <rect x="1060" y="240" width="40" height="380" rx="8"/>
+    <rect x="965" y="260" width="35" height="360" rx="6" opacity="0.7"/>
+  </g>
+
+  <!-- Mandap Arch -->
+  <path d="M 180 260 Q 640 100 1100 260" fill="none" stroke="{accent}" stroke-width="12" stroke-linecap="round"/>
+  <path d="M 220 280 Q 640 140 1060 280" fill="none" stroke="{mid_color}" stroke-width="6" opacity="0.6"/>
+
+  <!-- Floral Garlands / Hanging Jasmine Torans -->
+  <g fill="{accent}" opacity="0.9">
+    <circle cx="340" cy="220" r="8"/>
+    <circle cx="440" cy="180" r="9"/>
+    <circle cx="540" cy="160" r="10"/>
+    <circle cx="640" cy="150" r="12" fill="#FFFFFF"/>
+    <circle cx="740" cy="160" r="10"/>
+    <circle cx="840" cy="180" r="9"/>
+    <circle cx="940" cy="220" r="8"/>
+  </g>
+
+  <!-- Dias Stage Platform -->
+  <polygon points="120,640 1160,640 1240,720 40,720" fill="{bg_mid}" opacity="0.95" stroke="{accent}" stroke-width="2"/>
+  <rect x="360" y="580" width="560" height="60" rx="8" fill="{bg_deep}" stroke="{accent}" stroke-width="3"/>
+
+  <!-- Brass Diya / Oil Lamps -->
+  <g fill="{accent}">
+    <path d="M 380 570 Q 395 540 410 570 Z"/>
+    <circle cx="395" cy="545" r="5" fill="#FFF7D6" filter="url(#blur)"/>
+    <path d="M 870 570 Q 885 540 900 570 Z"/>
+    <circle cx="885" cy="545" r="5" fill="#FFF7D6" filter="url(#blur)"/>
+  </g>
+
+  <!-- Typography Card -->
+  <rect x="250" y="60" width="780" height="75" rx="16" fill="rgba(10, 5, 20, 0.85)" stroke="{accent}" stroke-width="1.5"/>
+  <text x="640" y="92" font-family="system-ui, sans-serif" font-size="18" font-weight="bold" fill="{accent}" text-anchor="middle" letter-spacing="1.5">
+    FESTIVAPULSE AI • GUIDED TOUR CELEBRATION ATELIER
+  </text>
+  <text x="640" y="118" font-family="system-ui, sans-serif" font-size="12" fill="#E2E8F0" text-anchor="middle">
+    Theme: {theme_name} • Mood: {lighting_mood}
+  </text>
+</svg>"""
+        b64_svg = base64.b64encode(svg.encode("utf-8")).decode("utf-8")
+        return {
+            "data_url": f"data:image/svg+xml;base64,{b64_svg}",
+            "asset_url": asset_url,
+            "gcs_url": gcs_url,
+            "theme_category": theme_cat,
+            "theme_name": theme_name,
+            "tagline": tagline,
+            "cultural_elements": cultural_elements,
+        }
+
+
+imagen_service = ImagenVisualizerService()
